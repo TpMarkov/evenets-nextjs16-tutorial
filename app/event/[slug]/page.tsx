@@ -1,7 +1,10 @@
 import React from 'react'
 import {notFound} from "next/navigation";
 import Image from "next/image";
-
+import BookEvent from "@/components/events/BookEvent"
+import {getSimilarEventsBySlug} from "@/lib/actions/event.actions";
+import {IEvent} from "@/database";
+import EventCard from "@/components/events/EventCard";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL
 
@@ -46,18 +49,40 @@ const EventAgenda =
             </div>
         )
     }
+// @ts-ignore
+
 const EventDetailsPage = async ({params}: Promise<{ slug: string }>) => {
     const {slug} = await params
 
-    const response = await fetch(`${BASE_URL}/api/events/${slug}`)
-    const {event} = await response.json()
+    let event
 
+    try {
+        const request = await fetch(`${BASE_URL}/api/events/${slug}`, {
+            next: {revalidate: 60}
+        })
+        if (!request.ok) {
+            if (request.status === 404) {
+                return notFound()
+            }
+            throw new Error(`Failed to fetch event : ${request.statusText}`)
+        }
+        const response = await request.json()
+        event = response.event
 
-    if (!event) {
+        if (!event) {
+            return notFound()
+        }
+
+    } catch (error) {
+        console.error("Error fetching event", error)
         return notFound()
     }
 
     const {title, tags, location, date, overview, time, description, mode, organizer, agenda, audience, image} = event
+    const bookings = 10
+
+    const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug)
+
 
     return (
         <section id={"event"}>
@@ -83,22 +108,36 @@ const EventDetailsPage = async ({params}: Promise<{ slug: string }>) => {
                         <EventDetailsItem icon="/icons/mode.svg" alt="calendar" label={mode}/>
                         <EventDetailsItem icon="/icons/audience.svg" alt="calendar" label={audience}/>
                     </section>
-                    <EventAgenda agendaItems={JSON.parse(agenda[0])}/>
+                    <EventAgenda agendaItems={agenda}/>
 
                     <section className="flex-col-gap-2">
                         <h2>About the Organizer</h2>
                         <p>{organizer}</p>
                     </section>
 
-                    <EventTags tags={JSON.parse(tags[0])}/>
-
+                    <EventTags tags={tags}/>
 
                 </div>
 
                 {/* Right Side - Booking details */}
                 <aside className={"booking"}>
-                    <p className={"text-lg font-semibold"}>Book Event</p>
+                    <div className={"signup-card"}>
+                        <h2>Book Your Spot</h2>
+                        {bookings > 0 ? <p>Join {bookings} people who have already booked their spot</p> :
+                            <p className={"text-sm"}>Be the first to book your spot</p>}
+                        <BookEvent/>
+                    </div>
+
                 </aside>
+            </div>
+
+            <div className={"w-full flex flex-col gap-4 pt-20"}>
+                <h2>Similar Events</h2>
+                <div className={"events"}>
+                    {similarEvents.length > 0 && similarEvents.map((similarEvent) => (
+                        <EventCard key={similarEvent.title} {...similarEvent}/>
+                    ))}
+                </div>
             </div>
         </section>
     )

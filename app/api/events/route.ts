@@ -22,6 +22,10 @@ export async function POST(req: NextRequest) {
         if (!file) {
             return NextResponse.json({message: "Image file is required"}, {status: 400})
         }
+        let tags = JSON.parse(formData.get("tags") as string)
+        let agenda = JSON.parse(formData.get("agenda") as string)
+
+
         const arrayBuffer = await file.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
 
@@ -34,15 +38,16 @@ export async function POST(req: NextRequest) {
                 resolve(data)
             }).end(buffer)
         })
+
         event.image = (uploadedResult as { secure_url: string }).secure_url
 
-        const createdEvent = await Event.create(event)
+        const createdEvent = await Event.create({...event, tags: tags, agenda: agenda})
 
 
         return NextResponse.json({message: "Event created", createdEvent}, {status: 200})
 
     } catch (err) {
-        return NextResponse.json({message: "Failed to create Event"}, {status: 500})
+        return NextResponse.json({message: "Failed to create Event", err: err.message}, {status: 500})
     }
 
 }
