@@ -6,6 +6,7 @@ export interface IBooking extends Document {
     email: string;
     createdAt: Date;
     updatedAt: Date;
+    slug: string
 }
 
 const BookingSchema = new Schema<IBooking>(
@@ -30,6 +31,11 @@ const BookingSchema = new Schema<IBooking>(
                 message: 'Please provide a valid email address',
             },
         },
+        slug: {
+            type: String,
+            required: [true, 'Slug is required'],
+            trim: true,
+        }
     },
     {
         timestamps: true, // Automatically manage createdAt and updatedAt
