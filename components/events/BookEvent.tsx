@@ -59,6 +59,7 @@
 "use client"; // important!
 
 import React, {useState} from "react";
+import posthog from "posthog-js";
 
 interface Props {
     eventId: string;
@@ -70,36 +71,52 @@ export default function BookEvent({eventId, slug}: Props) {
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
-        debugger
-        e.preventDefault();
-        setLoading(true);
-        const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-        // Call a server action instead of using connectDB / Booking model directly
-        const res = await fetch(`/api/book-event`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({eventId, email, slug}),
-        });
 
-        const data = await res.json();
-        console.log(data);
+        try {
 
-        setLoading(false);
+            e.preventDefault();
+
+            setLoading(true);
+            const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+            // Call a server action instead of using connectDB / Booking model directly
+            const res = await fetch(`/api/book-event`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({eventId, email, slug}),
+            });
+
+            posthog.capture("event-booked", {eventId, slug, email});
+
+            const data = await res.json();
+            console.log(data);
+            setEmail("")
+            setLoading(false);
+        } catch (e) {
+            console.error("Error when booking event", e)
+            posthog.captureException(e)
+
+        }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-            <input
-                type="email"
-                placeholder="Your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-            />
-            <button type="submit" disabled={loading}>
-                {loading ? "Booking..." : "Book Now"}
-            </button>
-        </form>
-    );
+        <div id={"book-event"}>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+                <input
+                    type="email"
+                    id={"email"}
+                    placeholder="Your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                />
+                <button type="submit" disabled={loading}>
+                    {loading ? "Booking..." : "Book Now"}
+                </button>
+            </form>
+        </div>
+
+    )
+
 }
 
